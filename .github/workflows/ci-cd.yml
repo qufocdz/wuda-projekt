@@ -1,0 +1,121 @@
+
+name: WUDA Django CI/CD
+
+on:
+  push:
+    branches: [main, master]
+
+  pull_request:
+    branches: [main, master]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-cd:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: django_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      MYSQL_DATABASE: django_db
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root_password
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      SECRET_KEY: ci-only-secret-key
+
+    steps:
+      # 1. Pobranie kodu repozytorium
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # 2. Konfiguracja Pythona
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # 3. Instalacja zależności systemowych MySQL
+      - name: Install MySQL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            default-libmysqlclient-dev
+
+      # 4. Instalacja bibliotek Pythona
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Lint
+      - name: Run Pylint
+        run: pylint --rcfile=.pylintrc polls mysite
+
+      # 6. Sprawdzenie konfiguracji Django
+      - name: Django system check
+        run: python manage.py check
+
+      # 7. Testy automatyczne
+      - name: Run Django tests
+        run: python manage.py test
+
+      # 8. Konfiguracja Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # 9. Logowanie do GitHub Container Registry
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 10. Generowanie tagów obrazu
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 11. Budowanie i publikowanie obrazu
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

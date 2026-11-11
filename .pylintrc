@@ -1,0 +1,17 @@
+[MASTER]
+load-plugins=pylint_django
+django-settings-module=mysite.settings
+ignore=migrations,venv,.venv
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods
+
+[FORMAT]
+max-line-length=100
+
+[TYPECHECK]
+generated-members=objects
