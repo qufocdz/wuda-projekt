@@ -66,7 +66,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerySetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question.>'],
+            ['Past question.'],
             transform=str
         )
 
@@ -90,7 +90,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerySetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question.>'],
+            ['Past question.'],
             transform=str
         )
 
@@ -103,7 +103,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerySetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question 2.>', '<Question: Past question 1.>'],
+            ['Past question 2.', 'Past question 1.'],
             transform=str
         )
 
