@@ -30,3 +30,5 @@ The following tasks were completed:
 
 ![CI/CD Pipeline Diagram](./docs/cicd-pipeline.png)
 **Figure 2. CI/CD Pipeline Diagram**
+
+TEST CI/CD
